@@ -4,3 +4,6 @@
 [submodule "themes/amazing"]
 	path = themes/amazing
 	url = https://github.com/removeif/hexo-theme-amazing.git
+[submodule "themes/archer"]
+	path = themes/archer
+	url = https://github.com/fi3ework/hexo-theme-archer.git
