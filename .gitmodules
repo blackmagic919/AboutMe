@@ -1,9 +1,0 @@
-[submodule "themes/arknights"]
-	path = themes/arknights
-	url = https://github.com/Yue-plus/hexo-theme-arknights
-[submodule "themes/amazing"]
-	path = themes/amazing
-	url = https://github.com/removeif/hexo-theme-amazing.git
-[submodule "themes/archer"]
-	path = themes/archer
-	url = https://github.com/fi3ework/hexo-theme-archer.git
