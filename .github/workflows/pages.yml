@@ -26,7 +26,7 @@ jobs:
           restore-keys: |
             ${{ runner.OS }}-npm-cache
       - name: Install Dependencies
-        run: npm install && cd ./themes/archer && npm install && cd ..
+        run: npm install #&& cd ./themes/archer && npm install && cd ..
       - name: Build
         run: npm run build
       - name: Upload Pages artifact
