@@ -88,7 +88,7 @@ Finally, the problem of connecting both meshes may be solved by executing both M
 
 When implementing this form of Marching-Cubes there are several considerations to keep in mind. As since most of these problems have been well established there exist many solutions online that provide insight on addressing them.
 - Normals
-    - For a smooth surface, it is necessary to resolve the normals based on the adjacent grid information; the resulting normal is simply the change in density along the 3 grid vectors. Information can be found [here] (https://stackoverflow.com/questions/27726848/calculating-normals-indices-and-uv-coordinates-for-marching-cubes-mesh)
+    - For a smooth surface, it is necessary to resolve the normals based on the adjacent grid information; the resulting normal is simply the change in density along the 3 grid vectors. Information can be found [here](https://stackoverflow.com/questions/27726848/calculating-normals-indices-and-uv-coordinates-for-marching-cubes-mesh)
 - Duplicate Vertices
     - When generating mesh geometry on a cube-by-cube basis, adjacent cubes will share edges, and vertices generated on said edges will be duplicated. One may resolve this through a hash-table but the vertex order becomes unpredictable and more importantly, such a solution is lacking for parallel generation. A different solution is to only keep vertices generated next to one corner, and maintain a custom lookup hash to keep track of the index. A later pass can then be arranged to ascertain the correct indexes--Information can be found [here](https://gamedev.net/forums/topic/614060-remove-duplicate-vertices/4878921/)
 - Level of Detail
