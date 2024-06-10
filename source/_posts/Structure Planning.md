@@ -49,13 +49,13 @@ Hence, the process of identifying all structures overlapping the chunk being gen
 
 ## Specifications
 
-A structure is identified by an origin and structure-id. The origin refers to the position from which the placement of the structure's data can be translated from. To plan a structure is equivalent to determining the type of structure to generate and the origin position from which to generate from. Each structure is also layed as a rectangular prism, where each data value contains information regarding the specific grid coordinate it resides at. Limiting representation to a rectangular-prism aids placement of structures in the future.
+A structure is identified by an origin and structure-id. The origin refers to the position from which the placement of the structure's data can be translated from. To plan a structure is equivalent to determining the type of structure to generate and the origin position from which to generate from. Each structure is also stored as a rectangular prism, where each data value contains information regarding the specific grid coordinate it resides at. Limiting representation to a rectangular-prism aids placement of structures in the future.
 
 ![](structure_diagram.png)
 
 For simplicity, the origin of all structures discussed will be at the lowest coordinate position inside the structure. This ensures that given a structure whose origin is within a chunk, it may only overlap chunks of higher coordinate positions.
 
-There is another requirement of determinism: that is, given the same seed there should invariably be identical terrain at a given location regardless of how the terrain is procesed up until the position. While this requirement is not always requisite, such deterministim is, more often than not, beneficial and will be adhered to.
+There is another requirement of determinism: that is, given the same seed there should invariably be identical terrain at a given location regardless of how the terrain is procesed up until the position. While this requirement is not always necessary, such deterministim is, more often than not, beneficial and will be adhered to.
 
 ## Solution
 
