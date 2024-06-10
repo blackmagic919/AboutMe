@@ -11,7 +11,7 @@ I delve deeply into research and design choices regarding procedural content gen
 
 ### Project Concept
 
-![](Chunk_Borders.png)
+≈
 
 [Procedural Generation](https://en.wikipedia.org/wiki/Procedural_generation) is a form of computer architechture that focuses on the dynamic generation of content. Contrary to traditional architechture, all broad-level states are not defined beforehand, but may be determined through a set of changing inputs. In terms of games, this often takes the form of terrain-generation, where near-infinite worlds may be simulated through the contained generation of only the viewer's immediate vicinity. This is a topic I will explore in-depth.
 

@@ -1,10 +1,10 @@
 ---
 title: Mesh Generation
 date: 2024-05-18 20:02:29
-tags:
+tags: [Mesh]
 ---
 
-## Problem Statement
+## Overview
 
 On-demand 3D terrain generation in games is traditionally accomplished through several methods. One is voxelization which quantifies terrain as regularly sized voxels(cubes) and the other is polygonization which quantifies terrain as combinations of 2D polygons. 
 
@@ -93,3 +93,250 @@ When implementing this form of Marching-Cubes there are several considerations t
     - When generating mesh geometry on a cube-by-cube basis, adjacent cubes will share edges, and vertices generated on said edges will be duplicated. One may resolve this through a hash-table but the vertex order becomes unpredictable and more importantly, such a solution is lacking for parallel generation. A different solution is to only keep vertices generated next to one corner, and maintain a custom lookup hash to keep track of the index. A later pass can then be arranged to ascertain the correct indexes--Information can be found [here](https://gamedev.net/forums/topic/614060-remove-duplicate-vertices/4878921/)
 - Level of Detail
     - For applications where large terrains need to be generated the production & maintenance of all the data immediately may be impossible. This is often resolved using several several levels of details. When different levels of detail meet, there is innevitably a gap formed wherever one grid point fails to find a counterpart in a lower level. This issue may be resolved through several strategies detailed [here](https://transvoxel.org/Lengyel-VoxelTerrain.pdf)
+
+## Code Source
+<i>Optimized HLSL Parallel Implementation</i>
+
+{% codeblock lang:C#%}
+
+#pragma kernel March
+
+#include "Assets/Resources/MapData/CCoordHash.hlsl"
+#include "Assets/Resources/Utility/GetIndex.hlsl"
+#include "Assets/Resources/TerrainGeneration/BaseGeneration/MarchingTables.hlsl"
+#include "Assets/Resources/TerrainGeneration/BaseGeneration/MapNormalSampler.hlsl"
+#define SAMPLE_TERRAIN 0
+#define SAMPLE_WATER 1
+
+static const float3 Epsilon = float3(1E-6, 1E-6, 1E-6);
+
+struct vertex{
+    float3 tri;
+    float3 norm;
+    int2 material; //x = base, y = water
+};
+
+struct CubeCorner{
+    float solid;
+    float liquid;
+    int material;
+};
+
+struct MarchCube{
+    CubeCorner corners[8];
+};
+
+struct pInfo{
+    uint axis[3];
+};
+
+
+const static int numThreads = 8;
+
+
+
+/*               
+*  _____________  8  ------
+* |  _________  | 7 6      |<-NumOfPoints, Density Map Size
+* | |_|_|_|_|_| | 6 5 5 -  |
+* | |_|_|_|_|_| | 5 4 4  | |
+* | |_|_|_|_|_| | 4 3 3  |<+--ChunkSize / meshSkipInc
+* | |_|_|_|_|_| | 3 2 2  | |  "Real Vertices"
+* | |_|_|_|_|_| | 2 1 1 _| |
+* |_____________| 1_^_^____|
+*Purpose:           ^ | |
+*   Border Normals⅃ | |
+*          Last Edge⅃ |     
+*      Number of Cubes⅃
+*
+*    7---6----6
+*   7|       5|
+*  / 11      /10
+* 4--+-4---5  |
+* |  |     9  |
+* 8  3---2-+--2
+* | 3      | 1
+* 0----0---1/
+* 
+* z
+* ^     .--------.
+* |    /|       /|
+* |   / |      / |    y
+* |  .--+-----.  |   /\
+* |  |  |     |  |   /
+* |  |  .-----+--.  /
+* |  | /      | /  /
+* | xyz_______./  /
+* +---------> x  /
+*/
+
+//Map Info
+#ifndef MAP_SAMPLER
+#define MAP_SAMPLER
+StructuredBuffer<uint> _MemoryBuffer;
+StructuredBuffer<uint2> _AddressDict;
+int3 CCoord;
+float meshSkipInc;
+int numCubesPerAxis;
+
+const static int POINT_STRIDE_4BYTE = 1;
+#endif
+
+float IsoLevel;
+
+//Output
+RWStructuredBuffer<uint> counter;
+uint3 counterInd; //x -> vertex, y -> baseTri, z -> waterTri
+
+RWStructuredBuffer<vertex> vertexes;
+
+RWStructuredBuffer<pInfo> triangles;
+RWStructuredBuffer<uint> triangleDict;
+uint bSTART_dict;
+uint bSTART_verts;
+uint bSTART_baseT;
+uint bSTART_waterT;
+
+
+
+MarchCube ReadCube(int3 coord){
+    MarchCube cube;
+    [unroll]for(int i = 0; i < 8; i++){
+        int3 sCoord = clamp(coord + positionFromIndex[i], 0, numCubesPerAxis);
+        uint mapData = ReadMapData(sCoord, CCoord);
+        float density = (mapData & 0xFF) / 255.0f;
+        float viscosity = ((mapData >> 8) & 0xFF) / 255.0f;
+
+        cube.corners[i].solid = density * viscosity;
+        cube.corners[i].liquid = density * (1-viscosity);
+        cube.corners[i].material = ((mapData >> 16) & 0x7FFF);
+    }
+    return cube;
+}
+
+
+float interpolate(float p1Val, float p2Val) {
+    //If p1Val != p2Val, Epsilon is lost through float conversion, otherwise Epsilon prevents Nan
+    return ((IsoLevel - p1Val) / (p2Val - p1Val + Epsilon.x)); 
+}
+
+
+[numthreads(numThreads,numThreads,numThreads)]
+void March (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= numPointsPerAxis || id.y >= numPointsPerAxis || id.z >= numPointsPerAxis)
+        return;
+
+    int3 oCoord = int3(id.xyz);
+    int oIndex = indexFromCoord(id.xyz);
+    MarchCube cube = ReadCube(oCoord);
+
+    uint baseIndex = 0; uint waterIndex = 0;
+    [unroll] for(uint u = 0; u < 8; u++){
+        if ((cube.corners[u].solid) < IsoLevel) baseIndex |= (1 << u);
+        if ((cube.corners[u].liquid) < IsoLevel) waterIndex |= (1 << u);
+    }
+    
+    uint i;
+    //Generate Water first so terrain can override its geometry
+    for (i = 0; triangulation[waterIndex][i] != -1; i +=3) {
+        [unroll] for(uint v = 0; v < 3; v++){
+            //Get the point indexes
+            int2 pInd = cornerIndexFromEdge[triangulation[waterIndex][i + v]].xy;
+
+            if(pInd.x != 0) continue; //Duplicate Vertex
+
+            //Figure out point positions
+            int3 p1 = oCoord + positionFromIndex[pInd.x];
+            int3 p2 = oCoord + positionFromIndex[pInd.y];
+
+            if(any((uint)p2 >= numPointsPerAxis)) continue; //Out of Bounds
+
+            vertex newVert;
+            //Get point densities
+            float p1Val = cube.corners[pInd.x].liquid;
+            float p2Val = cube.corners[pInd.y].liquid;
+            float interpFactor = interpolate(p1Val, p2Val);
+
+            newVert.norm = normalize(GetVertexNormal(p1, p2, interpFactor, SAMPLE_WATER));
+            newVert.tri = (p1 + interpFactor * (p2 - p1)) * meshSkipInc;
+            newVert.material = uint2(cube.corners[p1Val > p2Val ? pInd.y: pInd.x].material, 
+                                     cube.corners[p1Val > p2Val ? pInd.x: pInd.y].material);
+
+            //Append Vertex
+            int appendInd = 0;
+            InterlockedAdd(counter[counterInd.x], 1, appendInd);
+            vertexes[bSTART_verts + appendInd] = newVert;
+
+            //Set To Dictionary
+            triangleDict[3 * oIndex + cornerToDict[pInd.y] + bSTART_dict] = appendInd;
+        }
+    }
+
+    for (i = 0; triangulation[baseIndex][i] != -1; i +=3) {
+        [unroll] for(uint v = 0; v < 3; v++){
+            //Get the point indexes
+            int2 pInd = cornerIndexFromEdge[triangulation[baseIndex][i + v]].xy;
+
+            if(pInd.x != 0) continue; //Duplicate Vertex
+
+            //Figure out point positions
+            int3 p1 = oCoord + positionFromIndex[pInd.x];
+            int3 p2 = oCoord + positionFromIndex[pInd.y];
+
+            if(any((uint)p2 >= numPointsPerAxis)) continue; //Out of Bounds
+
+            vertex newVert;
+            //Get point densities
+            float p1Val = cube.corners[pInd.x].solid;
+            float p2Val = cube.corners[pInd.y].solid;
+            float interpFactor = interpolate(p1Val, p2Val);
+
+            newVert.norm = normalize(GetVertexNormal(p1, p2, interpFactor, SAMPLE_TERRAIN));
+            newVert.tri = (p1 + interpFactor * (p2 - p1)) * meshSkipInc;
+            //If it borders liquid, the liquid will always be in y channel
+            newVert.material = uint2(cube.corners[p1Val > p2Val ? pInd.x: pInd.y].material, 
+                                     cube.corners[p1Val > p2Val ? pInd.y: pInd.x].material);
+            
+            //Append Vertex
+            int appendInd = 0;
+            InterlockedAdd(counter[counterInd.x], 1, appendInd);
+            vertexes[bSTART_verts + appendInd] = newVert;
+
+            //Set To Dictionary
+            triangleDict[3 * oIndex + cornerToDict[pInd.y] + bSTART_dict] = appendInd;
+        }
+    }
+
+    //Only add triangles if a valid cube
+    if(id.x >= numCubesPerAxis || id.y >= numCubesPerAxis || id.z >= numCubesPerAxis) 
+        return;
+
+    for (i = 0; triangulation[baseIndex][i] != -1; i +=3) {
+        pInfo baseTri;
+        [unroll] for(uint v = 0; v < 3; v++){ //Get the dict index locations of the vertices
+            int3 cornerInfo = cornerIndexFromEdge[triangulation[baseIndex][i + v]];
+            baseTri.axis[v] = indexFromCoord(oCoord + positionFromIndex[cornerInfo.x]) * 3 + cornerInfo.z;
+        }
+
+        //Append Base Triangle
+        int appendInd = 0;
+        InterlockedAdd(counter[counterInd.y], 1, appendInd);
+        triangles[bSTART_baseT + appendInd] = baseTri;
+    }
+
+    for (i = 0; triangulation[waterIndex][i] != -1; i +=3) {
+        pInfo waterTri;
+        [unroll] for(uint v = 0; v < 3; v++){ //Get the dict index locations of the vertices
+            int3 cornerInfo = cornerIndexFromEdge[triangulation[waterIndex][i + v]];
+            waterTri.axis[v] = indexFromCoord(oCoord + positionFromIndex[cornerInfo.x]) * 3 + cornerInfo.z;
+        }
+
+        //Append Base Triangle
+        int appendInd = 0;
+        InterlockedAdd(counter[counterInd.z], 1, appendInd);
+        triangles[bSTART_waterT + appendInd] = waterTri;
+    }
+}
+
+{% endcodeblock %}
