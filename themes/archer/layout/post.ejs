@@ -9,6 +9,7 @@
             <p><%- __('post_link') %>：<a href="<%- page.permalink %>"><%- page.permalink %></a>
             <p><%- __('publish_date') %>：<a href="<%- page.permalink %>"><%- (page.date).format('MMMM Do YYYY, h:mm:ss a') %></a>
             <p><%- __('update_date') %>：<a href="<%- page.permalink %>"><%- (page.updated).format('MMMM Do YYYY, h:mm:ss a') %></a>
+
         </div>
     <% } %>
     <!-- paginator -->
@@ -60,7 +61,7 @@
                 const now = Date.now()
                 const interval = parseInt(now - pubTime)
                 const days = parseInt(interval / 86400000)
-                const outdated_threshold = parseInt(<%- theme.outdated_threshold.days %>)
+                const outdated_threshold = parseInt(theme.outdated_threshold.days)
                 if (interval > outdated_threshold * 24 * 3600 * 1000) {
                     post.innerHTML = '<div class="note note-warning">' +
                     `<div class="title">文章时效性提示</div><p>这是一篇发布于 ${days} 天前的文章，部分信息可能已发生改变，请注意甄别。` +

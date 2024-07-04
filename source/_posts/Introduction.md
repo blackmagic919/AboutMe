@@ -11,9 +11,9 @@ I delve deeply into research and design choices regarding procedural content gen
 
 ### Project Concept
 
-≈
+![](Chunk_Borders.png)
 
-[Procedural Generation](https://en.wikipedia.org/wiki/Procedural_generation) is a form of computer architechture that focuses on the dynamic generation of content. Contrary to traditional architechture, all broad-level states are not defined beforehand, but may be determined through a set of changing inputs. In terms of games, this often takes the form of terrain-generation, where near-infinite worlds may be simulated through the contained generation of only the viewer's immediate vicinity. This is a topic I will explore in-depth.
+[Procedural Generation](https://en.wikipedia.org/wiki/Procedural_generation) is a form of design architechture that focuses on the dynamic generation of content. Contrary to traditional architechture, all broad-level states are not defined beforehand, but may be determined through a set of changing inputs. In terms of games, this often takes the form of terrain-generation, where near-infinite worlds may be simulated through the contained generation of only the viewer's immediate vicinity. This is a topic I will explore in-depth.
 
 A common method to approach procedural generation is the tokenization of content which can be replaced selectively after its accessibility expires. Doing so reduces the load during generation of new content, as existing content may be cached while accessible. Regarding terrain-generation, tokenization is commonly referred to as chunks and divide continuous terrain into contained sections--a visualization of this concept can be seen above.
 
