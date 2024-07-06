@@ -26,11 +26,11 @@ Maintaining a fixed distance of seperation through a further sampling step is of
 
 ## Specifications
 
-Previously, Planning and Pruning underscored a need for a deterministic system such that two chunks can independently identify the same structure which intersects them both. Structure Placement, on the otherhand, works exclusively in the bounds of its own working-chunk and thus does not intrinsically *need* to be deterministic. Though it may not be necessary, being detreministic is often regarded as a benefit, partially because it allows easy recording and replication of procedural content because the conditions necessary to generate the same content can be exposed at a top-level. For this reason, structure placement, specifically overlap resolution will strive to be deterministic accordingly.
+Previously, Planning and Pruning underscored a need for a deterministic system such that two chunks can independently identify the same structure which intersects them both. Structure Placement, on the otherhand, works exclusively in the bounds of its own working-chunk and thus does not intrinsically *need* to be deterministic to achieve its goal(of placing the structure). Though it may not be necessary, being detreministic is often regarded as a benefit, partially because it allows easy recording and replication of procedural content because the conditions necessary to generate the same content can be exposed at a top-level. For this reason, structure placement, specifically overlap resolution will strive to be deterministic accordingly.
 
 ## Solution
 
-Before we begin, it's beneficial to keep in mind where Structure-Placement is occuring in relation to the previous steps. While one may be tempted to attempt a [prescripted](/AboutMe/2024/06/16/Structure-Pruning/) method, there are several reasons to prefer placing after the 'Base Terrain Information' has been supplied. Firstly, structures may not completely occupy replace a chunk's map data, unlike 'Base Terrain Information', and without manually clearing memory(often expensive) it would be impossible to determine if an entry is part of a structure or garbage data. Furthermore, responsibility for blending the structure and the base terrain, is best given to structure-placement which is not possible if 'Base Terrain Generation' occurs afterwards.
+Before we begin, it's beneficial to keep in mind where Structure-Placement is occuring in relation to the previous steps. While one may be tempted to attempt a [prescripted](/AboutMe/2024/06/16/Structure-Pruning/) method, there are several reasons to prefer placing after the 'Base Terrain Information' has been supplied. Firstly, structures may not completely occupy a chunk's map data, unlike 'Base Terrain Information', and without manually obtaining clear memory(often inefficient when reusing memory), it would be impossible to determine if an entry is part of a structure or garbage data. Furthermore, responsibility for blending the structure and the base terrain, is best given to structure-placement which is not possible if 'Base Terrain Generation' occurs afterwards.
 
 ![](Flow1.png)
 
@@ -38,12 +38,12 @@ Like before, when exactly the planning and pruning step is not prescribed throug
 
 ### Defining the Structure
 
-Up until this point, structures have so far been constricted as a cuboid because they are easy to describe (just three numbers are sufficient to express its bounds), and algorithms to map them onto a chunk are similarly straightforward. However, this limitation means all structures placed will have to be cuboids which will prove to be a challenge. For example, few trees are thought of to be perfect cuboids, so to fully encapsulate a tree in a cuboid, the tree must define its shape within the bounds of the cuboid while not adopting its shape itself. The point here is that the cuboid will encapsulate undesirable portions not part of the tree.
+Up until this point, structures have been construted as a cuboid because they are easy to describe (just three numbers are sufficient to express its bounds), and algorithms to map them onto a chunk are similarly straightforward. However, this limitation means all structures placed will have to be cuboids which will prove to be a challenge. For example, few trees are thought of to be perfect cuboids, so to fully encapsulate a tree in a cuboid, the tree must define its shape within the bounds of the cuboid while not adopting its shape itself. The point here is that the cuboid will encapsulate undesirable portions not part of the tree.
 
 ![](Tree1.png)
 *Note how most of the cuboid is not part of the tree*
 
-If the problem is that these portions which shouldn't be part of the tree and placed alongside the rest of the tree, the solution must involve identifying these portions and choosing not to place them. One way of identification is that these portions aren't solid(in our case the density is less than our defined IsoValue) while the rest of our 'tree' is. But this brings up two problems.
+If the problem is that these portions which shouldn't be part of the tree are placed alongside the rest of the tree, the solution must involve identifying these\ portions and choosing not to place them. One way of identification is that these portions aren't solid(in our case the density is less than our defined IsoValue) while the rest of our 'tree' is. But this brings up two problems.
 
 Though the not solid, or gas, portion of the cuboid may not be considered part of the tree, such a statement may not be invariably valid. In the case of this game, gaseous map-data is not discarded, but referenced by the Atmosphere Light-Scattering Algorithm such that the composition and density of the air is not trivial. But even in other cases, say an empty buried vault, often we want the *gaseous* contents to be preserved if only to maintain some empty space.
 
@@ -83,7 +83,7 @@ now becomes: Viscosity * (1 - Density) = 1 * (1 - 0.3) = 0.7
 
 Thus, the solid density is preserved, while the remaining density is assumed to be liquid. This method has the exceptional benefit by preserving the solid ground's shape by guaranteeing the same solid density. 
 
-Returning back to Structures, what this means is that when copying above-ground data into water, it is necessary for density to not be copied directly into the point's density, but transcribed into the points viscosity instead--that way the structures shape is preserved(as density here is 1) while the point remains underwater. However, copying density to viscosity does not work for solid above-ground densities because the point's original density complicate matters.
+Returning back to Structures, what this means is that when copying above-ground data into water, it is necessary for density to not be copied directly into the point's density, but transcribed into the points viscosity instead--that way the structures shape is preserved(as density here is 1) while the point remains underwater. However, copying density to viscosity does not work for solid above-ground densities because the point's original density complicates matters.
 
 ### Blending
 
@@ -109,7 +109,7 @@ Map.Material = InterlockedMax(Map.Material, Structure.Material | force) & 0x7FFF
 
 If we try to tackle Viscosity in the same way as density and material, we get the same [issue](#underwater-structures) where the air will override water leaving an unnatural gap between the structure and the body of water it is generating into. Our solution was to swap density and viscosity, but that would introduce a lot of complications to determine when a structure is underwater(especially parallel). 
 
-There's a realization to be made here. For solid terrain, viscosity is invariably 1/100%; to make liquid terrain, the values for density and viscosity are swapped meaning density is 1. If density is 1 for liquids, then taking the maximum with the structure density always result in 1. Since our plan is to swap density and viscosity when generating underwater, we plan to assign the viscosity of our structure(which is always 1), but there is no need to do this because the maximum will always return 1. In the same way, if we are generating above ground, the base viscosity must already be 1, and thus taking the maximum with any value will be identical to manually assigning it to 1(our structure's viscosity). Coincidentally, this means viscosity just needs to be the maximum of the base viscosity and the structure's density, as this action will effecitvely swap structure's density and viscosity if underwater, and only change density if on solid terrain. 
+There's a realization to be made here. For solid terrain, viscosity is invariably 1 or 100%; to make liquid terrain, the values for density and viscosity are swapped meaning density is 1. If density is 1 for liquids, then taking the maximum with the structure density always result in 1. Since our plan is to swap density and viscosity when generating underwater, we plan to assign the viscosity of our structure(which is always 1), but there is no need to do this because the maximum will always return 1. In the same way, if we are generating above ground, the base viscosity must already be 1, and thus taking the maximum with any value will be identical to manually assigning it to 1(our structure's viscosity). Coincidentally, this means viscosity just needs to be the maximum of the base viscosity and the structure's density, as this action will effecitvely swap structure's density and viscosity if underwater, and only change density if on solid terrain. 
 
 ![](Comparison.png)
 
@@ -128,7 +128,7 @@ Ultimately, all 90<sup>o</sup> rotations of a structure can be expressed as perm
 
 ![](monkey.png)
 
-As Structure data is stored as a continuous array of information, one must hypothesize one is able to simulate such transformations by simply changing the way they are reading the information. Then, by writing only in a positive direction in the chunk from the origin, one is able to maintain one direction of generation while properly mapping rotations. Thus, to map data using these axis transformations is equivalent to finding the correct access pattern that transforms the data. Given that a structure is stored as a list such that the index is calculated 
+As Structure data is stored as a continuous array of information, one must hypothesize that it is possible to simulate such transformations by simply changing the way they are reading the information. Then, by writing only in a positive direction in the chunk from the origin, one is able to maintain one direction of generation while properly mapping rotations. Thus, to map data using these axis transformations is equivalent to finding the correct access pattern that transforms the data. Given that a structure is stored as a list such that the index is calculated 
 
 index = x * size.yz + y * size.z + z
 
