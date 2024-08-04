@@ -7,6 +7,7 @@ tags: [Mesh]
 ## Overview
 
 On-demand 3D terrain generation in games is traditionally accomplished through several methods. One is voxelization which quantifies terrain as regularly sized voxels(cubes) and the other is polygonization which quantifies terrain as combinations of 2D polygons. 
+<!-- more -->
 
 The prior has its advantages in being straightforward to interact and generate but innevitably results in the choppy/cubic terrain. The term voxel is itself a 3D extention of the 2D pixel and similar to its counterpart, there are strategies such as sticky-cubes to counteract this limitation. However, further abstraction often leads to increased memory usage and reduced intuitivity. 
 

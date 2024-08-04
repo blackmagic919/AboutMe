@@ -1,12 +1,14 @@
 ---
 title: Introduction
 date: 2024-04-26 12:30:00
-tags:
+tags: 
+top: true
+sticky: 1
 ---
 Welcome to my webpage! Here I document my progress and ideas as I develop my [Game](https://github.com/blackmagic919/CivGame/tree/main)!
 I delve deeply into research and design choices regarding procedural content generation, and design architechture to optimize efficiency on [Unity's](https://unity.com/) platform.
 
-
+<!-- more -->
 ## Basic Details
 
 ### Project Concept
