@@ -154,11 +154,11 @@ Final Cave Function
 ```
 Noise Maps: 5
 
-CoarseCaveNoise = GetNoise
-FineCaveNoise = GetNoise
-CaveSize = GetNoise2D
-CaveShape = GetNoise2D
-CaveFrequency = GetNoise2D
+CoarseCaveNoise = GetNoise()
+FineCaveNoise = GetNoise()
+CaveSize = GetNoise2D()
+CaveShape = GetNoise2D()
+CaveFrequency = GetNoise2D()
 
 CoarseCaveNoise = GetNoiseCentered(CoarseCaveNoise, CaveShape, 0, 1)
 FineCaveNoise = GetNoiseCentered(FineCaveNoise, CaveShape, 0, 1)
