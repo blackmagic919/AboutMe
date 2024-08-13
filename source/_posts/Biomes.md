@@ -58,11 +58,11 @@ It's important to recognize the dimensionality of all these criterions. If you w
 
 ### Decision Matrix
 
-To begin creating a decision matrix, it's necessary to understand the basis of a decision. That is, how do we decide whether to place a biome at a certain position? Consider a single criterion A that allows us to decide whether a biome 'fits' or not. Conceptually, A is a measurement, or a dimension in which every grid entry may yeild a new value ```{x | x ∈ A}```. A simple yet general condition to decide whether a grid entry is part of a Biome is to define a range ```{LB, UB | (LB ≤ UB) ∪ (UB, LB ∈ A)}```, where a grid position is part of a biome if the grid entry is within the range ```LB ≤ x ≤ UB```. Geometrically, we are verifying whether a point lies withing a one-dimensional square, a line segement.
+To begin creating a decision matrix, it's necessary to understand the basis of a decision. That is, how do we decide whether to place a biome at a certain position? Consider a single criterion A that allows us to decide whether a biome 'fits' or not. Conceptually, A is a measurement, or a dimension in which every grid entry may yeild a new value ```{x | x ∈ A}```. A simple yet general condition to decide whether a grid entry is part of a Biome is to define a range ```{LB, UB | (LB ≤ UB) ∩ (UB, LB ∈ A)}```, where a grid position is part of a biome if the grid entry is within the range ```LB ≤ x ≤ UB```. Geometrically, we are verifying whether a point lies withing a one-dimensional square, a line segement.
 
 ![](OneD.png)
 
-With two criteria, we can extend this definition with a second dimension B. Each grid entry now additionally yeilds a second value ```{y | y ∈ B}```. Additionally we define a new range ```{LB1, UB1 | (LB1 ≤ UB1) ∪ (UB1, LB1 ∈ B)}```; as each grid entry now gives us two values ```x, y```, we can redefine the condition as a grid entry belongs to a biome **if and only if** both values are within their respective ranges ```(LB ≤ x ≤ UB) ∪ (LB1 ≤ y ≤ UB1)```. Geometrically, (x,y) defines a two dimensional coordinate, and the subset of space(AB) where both conditions is true is a square.
+With two criteria, we can extend this definition with a second dimension B. Each grid entry now additionally yeilds a second value ```{y | y ∈ B}```. Additionally we define a new range ```{LB1, UB1 | (LB1 ≤ UB1) ∩ (UB1, LB1 ∈ B)}```; as each grid entry now gives us two values ```x, y```, we can redefine the condition as a grid entry belongs to a biome **if and only if** both values are within their respective ranges ```(LB ≤ x ≤ UB) ∩ (LB1 ≤ y ≤ UB1)```. Geometrically, (x,y) defines a two dimensional coordinate, and the subset of space(AB) where both conditions is true is a square.
 
 ![](TwoD.png)
 
