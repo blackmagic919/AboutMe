@@ -67,7 +67,7 @@ Regrettably, this method complicates structure-placement further since overlap-r
 
 ### Underwater Structures
 
-When placing structures, we should be clear on what information is being copied from a structure definition into our chunk. It is crucial to remember that both the chunk and structures are represented as ***map data***, which in this [case](/AboutMe/2024/05/18/MeshGeneration/) means 3 values: density, viscosity, and material. Let's revisit the second [problem](#defining-the-structure) with literally copying only underground entries by also copying adjacent above-ground entries. What we find is that structures originally underwater no longer make contact with the water. 
+When placing structures, we should be clear on what information is being copied from a structure definition into our chunk. It is crucial to remember that both the chunk and structures are represented as ***map data***, which in this [case](/AboutMe/2024/05/18/MeshGeneration/) means 3 values: density, viscosity, and material. Let's revisit the second [problem](#Defining-the-Structure) with literally copying only underground entries by also copying adjacent above-ground entries. What we find is that structures originally underwater no longer make contact with the water. 
 
 ![](Water1.png)
 **Notice trees are surrounded by water surface = they are not touching water**
@@ -108,7 +108,7 @@ uint force = Structure.Preserve ? 1 << 31 : 0;
 Map.Density = InterlockedMax(Map.Density, Structure.Density | force) & 0x7FFFFFFF;
 Map.Material = InterlockedMax(Map.Material, Structure.Material | force) & 0x7FFFFFFF;
 
-If we try to tackle Viscosity in the same way as density and material, we get the same [issue](#underwater-structures) where the air will override water leaving an unnatural gap between the structure and the body of water it is generating into. Our solution was to swap density and viscosity, but that would introduce a lot of complications to determine when a structure is underwater(especially parallel). 
+If we try to tackle Viscosity in the same way as density and material, we get the same [issue](#Underwater-Structures) where the air will override water leaving an unnatural gap between the structure and the body of water it is generating into. Our solution was to swap density and viscosity, but that would introduce a lot of complications to determine when a structure is underwater(especially parallel). 
 
 There's a realization to be made here. For solid terrain, viscosity is invariably 1 or 100%; to make liquid terrain, the values for density and viscosity are swapped meaning density is 1. If density is 1 for liquids, then taking the maximum with the structure density always result in 1. Since our plan is to swap density and viscosity when generating underwater, we plan to assign the viscosity of our structure(which is always 1), but there is no need to do this because the maximum will always return 1. In the same way, if we are generating above ground, the base viscosity must already be 1, and thus taking the maximum with any value will be identical to manually assigning it to 1(our structure's viscosity). Coincidentally, this means viscosity just needs to be the maximum of the base viscosity and the structure's density, as this action will effecitvely swap structure's density and viscosity if underwater, and only change density if on solid terrain. 
 

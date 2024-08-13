@@ -31,11 +31,11 @@ Coming back to the same central requirements, there is a need above all else for
 
 ## Solution
 
-When pruning strucutres it is necessary to sample information about the base terrain. Even solely considering biomes, a planned-origin must at the very least be able to sample its biome to determine which group of structures to consider. Here the implementation will branch between two methods I will describe as prescreptive and post-scriptive pruning. The "scriptive" in this instance refers to the availability of the terrain information(such as biomes) which dictates the method of sampling said information. 
+When pruning strucutres it is necessary to sample information about the base terrain. Even solely considering biomes, a planned-origin must at the very least be able to sample its biome to determine which group of structures to consider. Here the implementation will branch between two methods I will describe as prescreptive and descriptive pruning. The "scriptive" in this instance refers to the availability of the terrain information(such as biomes) which dictates the method of sampling said information. 
 
-### Post-Scriptive
+### Descriptive
 
-Perhaps the most widely adopted method, post-scriptive sampling involves the prior procurment of the base terrain information. In effect, this means 
+Perhaps the most widely adopted method, descriptive sampling involves the prior procurment of the base terrain information. In effect, this means 
 
 ![](Flow1.png)
 
@@ -55,7 +55,7 @@ Contrastingly, prescriptive procures procures terrain data on-demand, and thus m
 
 ![](Flow2.png)
 
-Prescriptive sampling attempts to procure on-demand terrain information by performing the role of <i>Base Terrain Generation</i> for every sample and thus has the obvious disadvantage of being much slower. Furthermore, it is arguably less scalable than post-scriptive sampling as any changes to <i>Base Terrain Generation</i> must be reflected in the sampling method whilst further complication on its part will be inherited. Meanwhile, prescriptive sampling has the undeniable advantage of not being limited by the extents of base generation; as it is entrusted to construct the output by itself, it matters not if the sample is outside workable-chunks or of extreme detail. For contained terrain generation algorithms, the freedom Prescriptive sampling provides is an invaluable tool for structure-pruning.
+Prescriptive sampling attempts to procure on-demand terrain information by performing the role of <i>Base Terrain Generation</i> for every sample and thus has the obvious disadvantage of being much slower. Furthermore, it is arguably less scalable than descriptive sampling as any changes to <i>Base Terrain Generation</i> must be reflected in the sampling method whilst further complication on its part will be inherited. Meanwhile, prescriptive sampling has the undeniable advantage of not being limited by the extents of base generation; as it is entrusted to construct the output by itself, it matters not if the sample is outside workable-chunks or of extreme detail. For contained terrain generation algorithms, the freedom Prescriptive sampling provides is an invaluable tool for structure-pruning.
 
 ### Identification
 
