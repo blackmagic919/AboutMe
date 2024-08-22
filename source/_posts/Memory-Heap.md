@@ -30,8 +30,10 @@ Thus, for long-term storage of GPU generated data, the implementation of a custo
 {% blockquote %}
 Example Use-Case
 
-Polygons generated through marching cubes by shaders are hard to predict from the CPU. The CPU issues a GPU command to allocate a perfect-fit long-term memory block to store these polygons without knowing the size of the generated data.
+Polygons generated through marching cubes by shaders are hard to predict from the CPU. The CPU must issue a GPU command to allocate a perfect-fit long-term memory block to store these polygons without knowing the size of the generated data. It can do this because the CPU knows the location where the size will be when the command is executed by the GPU.
 {% endblockquote %}
+
+
 
 
 ## Specifications
