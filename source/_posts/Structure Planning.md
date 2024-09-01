@@ -60,6 +60,8 @@ There is another requirement of determinism: that is, given the same seed there 
 
 ## Solution
 
+### Sampling
+
 While some implementations may attempt to work through a list of structures attempting to place each one in a chunk, this will not be done due to scalability. Rather than requiring all chunks to evaluate the placement of every structure, it is far better to create the placement of multiple origins, and then determine the structure that may apply. Concurrently, structures may be deconstructed to an assortment of points representing the origins of the structures. With this, we can conduct a thought experiment.
 
 Consider an infinite space filled with a relatively even distribution of structure sizes. Marking the origin of the structures, and removing the structures themselves, this space is now an infinite point cloud with a seemingly random distribution of points. However, as we are only concerned with structures that our current chunk is responsible for creating, most of these points are superflous so let's isolate the points belonging to structures that overlap with the current chunk.
@@ -74,22 +76,82 @@ To comprehend what makes a point cloud unique regardless of the sampling chunk, 
 
 Having resolved positional sampling of a singular point cloud, there is the final hurdle of sampling fewer points further from the chunk. Fortunately, the answer is evident in the nature of the problem. For chunks further away, only few origins need to be sampled for the largest of structures while chunks nearer need both origins for large and small structures. By consequence, one may designate the first points sampled with a seed to indicate large structures with decreasing size as more points are sampled. Henceforth, a chunk may be able to sample only the largest structures without needing to parse all points.
 
+![](Sampling.png)
+
+### Parallelization
+
+In a synchronized implementation, this much may be enough to devise a solution. But when translating to a highly parallel system, there is an obvious inadequacy with the most direct solution. Such a solution would likely divide the work like so; as planning for a singular chunk requires distributed sampling across multiple chunk spaces where all origins bounded by a chunk space are dictated by a unique seed(the chunk position), this forms a mutually exclusive workspace for a thread allowing the work to be divded between chunk regions(25 in the diagram above). Actually, there are 3 dimensions these chunks are spread across meaning a maximum LoD of 3 with the same distribution pattern as above would spawn 125 sample blocks. This works out nicely for compute shaders which provide three dimensions of Thread Identification as this Id can be extrapolated to represent the offset Id of the sampling region from the current chunk. 
+
+Unfortunately, while this strategy divides-up the task, it does not do so evenly between all threads. Threads responsible for sampling regions close to the current chunk will find they have many more origins to generate than those far away. It doesn't help that our current thread Id scheme groups sampling regions by physical proximity as this causes some worker groups to only contain sampling regions closer to the current chunk than other worker groups. Eventually, we'll find that most threads will complete quickly and be waiting for a few threads given dense sampling regions.
+
+To design a better work distribution strategy, we can begin by noticing a trend with our LoD. As LoD increases, the amount of origins in a sampling region of that LoD decreases; this gets to the point where an LoD of 3 will do only 1/10th the work of LoD 0 in the diagram above. Simultaneously, the amount of chunks that must sample origins belonging to an LoD of 0 is 8, while the amount of chunks that must sample origins belonging to an LoD of 3 is 125. In fact, we'll find that generally the amount of origins sampled belonging to any LoD is roughly similar.
+
+**Amount of Origins in Each LoD(As Per Diagram extended for 3 Dimensions)**
+- LoD 0: (2\*2\*2) * 400 = 3200
+- LoD 1: (3\*3\*3) * 300 = 8100
+- LoD 2: (4\*4\*4) * 200 = 12800
+- LoD 3: (5\*5\*5) * 100 = 12500
+
+Of course, this depends on the falloff of origins with LoD, but commonly the falloff will be much higher than as depicted above. The ideal falloff is a function defined as ```y = 8 / (2 + x)^3 ``` where y is the falloff multiplied to the base sample origin count(400 above), and x is the LoD level. All in all, if one could divide workload based on origin LoD, it could significantly improve the parallelism, and thus speed, of the system.
+
+To do this, we can designate one DispatchID dimension to indicate origin LoD. Since aggregate threads on a compute shader can be envisioned as a cuboid, each LoD of our origin LoD dimension contains an even slice of the cuboid with an identical throughput(roughly at least ideally barring further abstractions).
+
+![](Dispatch.png)
+
+Now that we've isolated an even resource division for each level of detail, the tricky part comes with dividing work between all threads in the layer. If we scale the remaining two dimensions to encode the chunk offset we run into a problem. If the remaining two dimensions are scaled to the maximum LoD's sampling distance, then any other LoD will waste threads. Likewise, any dimensions smaller than that will have insufficient logical threads to sample the maximum LoD. In principle, having one logical thread sample every chunk will innevitably cause an uneven workload distribution. Rather, we need a distribution system that can remap multiple threads to one chunk depending on the LoD.
+
+At our maximum LoD it's meaningless to subdivide each regions task any further so each region can be designated its own logical thread. If the offset dimension of this maximum LoD is used as the other two dimensions, then we run into the aforementioned issue of wasted threads in lower LoDs. To resolve this, we can remap these wasted threads by performing a modular operation with the sample-region-size of the lower LoD. 
+
+![](Threads.png)
+
+It's unfortunate that some chunks will still have more threads than others, but to make this not the case would require LoD levels to be exponentially larger(i.e. all powers of 2), and anyways the difference in thread count cannot be greater than one. Having remapped multiple threads to identical chunks presents a new problem: subdividing sampling within a chunk.
+
+Firstly, to divide up a sample region we need to know how many threads are responsible for completing it. The number of threads mapped to the current thread's sample-region can be determined using the formula below:
+```
+uint remainder = ((maxRegionOffset % numRegions) < numRegionsMax % numRegions ? 1 : 0);
+uint regionOverlap = ⌊numRegionsMax / numRegions⌋ + remainder;
+```
+
+Then if each thread is assumed equal responsibility of sampling origins, the total amount of origins the current thread is responsible for can be defined as such.
+```
+uint numPoints = numPointsLoD[LoD] / ((float)regionOverlap) + random(seed); 
+//Random to process fractional points 
+```
+
+Finally, if each thread is responsible for only a fraction of the entire region's origins, the problem now is generating unique origins on every thread that is still deterministic, hence identifiable by other chunks. This can be done like so.
+
+```
+int overlapOffset = maxRegionOffset / numRegions;
+uint seed = (Random(chunkCoord.xyz) ^ Random(LoD)) + overlapOffset;
+for(uint i = 0; i < numPoints; i++){
+    float3 position =  (Random3(seed) * chunkSize);
+    seed += regionOverlap;
+}
+```
+
+The overlap offset will provide each thread accessing a region a unique number seperating it from all other threads accessing the region. By factoring it into the seed, we can guarantee that the starting seed is(usually) unique from its siblings accessing the region. The LoD is also used to determine the seed, but to prevent mapping collisions(If LoD is 0 and overlapOffset is 1, it will the same as LoD is 1 and overlapOffset is 0), it is first randomized. Finally the chunk coord needs to also be considered so it is first randomized for the same reason and then factored in.
+
+For the proceeding seeds for each thread to be unique, the seed can be incremented by the chunkOverlap. This allows each thread to take responsibility for every ith origin such that no seed can be mapped to by two threads with unique overlap offsets.
+
+![](Overlap.png)
+
 
 ## Code Source
 <i>Optimized HLSL Parallel Implementation</i>
 {% codeblock lang:C#%}
-
 #pragma kernel CSMain
+
+#include "Assets/Resources/Utility/Random.hlsl"
 
 const static int numLoDThreads = 8;
 const static int numChunkThreads = 64;
-const static float3 float3One = {1, 1, 1};
 
 //You can't seperate these values into different append buffers
 //because there is no way to gaurantee they're appended in same order
 struct structurePoint{
     float3 position;
     uint LoD;
+    //Padding to keep same stride as terrain checks
 };
 
 RWStructuredBuffer<structurePoint> structures;
@@ -105,6 +167,7 @@ uint chunkSize;
 //The average number of structures at minimum LoD(not collective LoD)
 uint numPoints0;
 float LoDFalloff;
+
 
 //Rationale: Instead of every chunk managing multiple LoD's, we have a single LoD per chunk
 //This allows us to map multiple threads to low LoDs, which is better 
@@ -132,11 +195,11 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     //Obtain random seed
     int3 chunkCoord = originChunkCoord - offsetCoord;
-    float3 seed3 = random(chunkCoord) + float3One * (random(LoD) + overlapOffset);
-    uint numPoints = uint((numPoints0 * pow(abs(LoDFalloff), -LoD)) / chunkOverlap + random(dot(seed3, float3One))); //Random to process fractional points 
+    uint seed = (Random(chunkCoord) ^ Random(LoD)) + overlapOffset;
+    uint numPoints = uint((numPoints0 * pow(abs(LoDFalloff), -LoD)) / chunkOverlap + RandomFloat(seed)); //Random to process fractional points 
 
     for(uint i = 0; i < numPoints; i++){
-        float3 position =  (random(seed3) * chunkSize) - offsetCoord * chunkSize;
+        float3 position =  (Random3(seed) * chunkSize) - offsetCoord * chunkSize;
 
         structurePoint newStructure;
         newStructure.position = position;
@@ -146,9 +209,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         InterlockedAdd(counter[bCOUNTER], 1u, appendInd);
         structures[appendInd + bSTART] = newStructure;
 
-        //Increment seed3 by one instead of random 
-        //so it's value is independent of the number of threads running it
-        seed3 += float3One * chunkOverlap; 
+        seed += chunkOverlap; 
     }
 }
 {% endcodeblock %}

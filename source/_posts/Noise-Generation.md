@@ -106,7 +106,7 @@ Given 3 2D points A, B and C, and their tangents defined by A<sub>0</sub>-A<sub>
 
 To define a line that passes from A to B, my first thought is to define a parametric function from A to B: A * (1 - t) + B * t, which is a linear interpolation between the two points based on the parameter t which can be thought of as the progress from A to B. While the slopes happen to match up here, we are not following the tangents defined at our control points. 
 
-For the tangent align with the defined control point tangents, we want the derivative to approach the tangent's derivative as we move closer to the next point. While there is a messy way to do this, a much more elegant solution is to **extend each tangent along the distance between the points and average their positions. Then Linearly interpolate between each point and this average, and then linearly interpolate between those values all by the progress**. Now that was pretty confusing so I'll break it down.
+For the tangent to align with the defined control point tangents, we want the derivative to approach the tangent's derivative as we move closer to the next point. While there is a messy way to do this, a much more elegant solution is to **extend each tangent along the distance between the points and average their positions. Then Linearly interpolate between each point and this average, and then linearly interpolate between those values all by the progress**. Now that was pretty confusing so I'll break it down.
 
 Dist = length(B - A)
 Anchor = ((A + A1 * Dist) + (B + B0 * Dist)) / 2
@@ -127,7 +127,7 @@ Mathematically, we can prove that we've(kind of) achieved our goal of having the
 
 ![](bezierProof.png)
 
-Actually, with the control point definition we've defined, a cubic bezier is more fitting where three line segments are defined <span class="vector">AA<sub>1</sub></span>, <span class="vector">A<sub>1</sub>B<sub>0</sub></span>, <span class="vector">B<sub>0</sub>B</span>. This is then reduced to two by interpolating between <span class="vector">AA<sub>1</sub></span> to <span class="vector">A<sub>1</sub>B<sub>0</sub></span> and <span class="vector">A<sub>1</sub>B<sub>0</sub></span> to <span class="vector">B<sub>0</sub>B</span> by t and then the repeating the same bilinear interpolation. However, this is more computationally intensive while the visual difference is minimal so for the purpose of expedient noise sampling, a quadratic bezier is used.
+Actually, with the control point definition we've defined, a cubic bezier is more fitting where three line segments are defined <span class="vector">AA<sub>1</sub></span>, <span class="vector">A<sub>1</sub>B<sub>0</sub></span>, <span class="vector">B<sub>0</sub>B</span>. This is then reduced to two by interpolating between <span class="vector">AA<sub>1</sub></span> to <span class="vector">A<sub>1</sub>B<sub>0</sub></span> and <span class="vector">A<sub>1</sub>B<sub>0</sub></span> to <span class="vector">B<sub>0</sub>B</span> by t and then repeating the same bilinear interpolation. However, this is more computationally intensive while the visual difference is minimal so for the purpose of expedient noise sampling, a quadratic bezier is used.
 
 <style>
     .vector {
@@ -148,7 +148,7 @@ Actually, with the control point definition we've defined, a cubic bezier is mor
 
 ### Conclusion
 
-Thusfar I've discussed the layers of complexity that's applied in the base noise-generation. These strategies are not innovations, but often-used strategies which I simply wished to discuss and document for the purpose of future reference. Going forward, I will rely on this article to discuss more complicated terrain generation, so stay tuned!
+Thusfar I've discussed the layers of complexity that's applied in the base noise-generation. These strategies are not new innovations I intend to bring forth, but often-used strategies which I simply wished to discuss and document for the purpose of future reference. Going forward, I will rely on this article to discuss more complicated terrain generation, so stay tuned!
 
 ## Code Source
 <i>Optimized HLSL Parallel Implementation</i>
