@@ -80,6 +80,10 @@ Having resolved positional sampling of a singular point cloud, there is the fina
 
 ### Parallelization
 
+{% blockquote %}
+**Warning: The Following Section Describes Implementation Details Related To Accelerated Programming. The information here on foreward will be unrelated to Synchronized Implementations**
+{% endblockquote %}
+
 In a synchronized implementation, this much may be enough to devise a solution. But when translating to a highly parallel system, there is an obvious inadequacy with the most direct solution. Such a solution would likely divide the work like so; as planning for a singular chunk requires distributed sampling across multiple chunk spaces where all origins bounded by a chunk space are dictated by a unique seed(the chunk position), this forms a mutually exclusive workspace for a thread allowing the work to be divded between chunk regions(25 in the diagram above). Actually, there are 3 dimensions these chunks are spread across meaning a maximum LoD of 3 with the same distribution pattern as above would spawn 125 sample blocks. This works out nicely for compute shaders which provide three dimensions of Thread Identification as this Id can be extrapolated to represent the offset Id of the sampling region from the current chunk. 
 
 Unfortunately, while this strategy divides-up the task, it does not do so evenly between all threads. Threads responsible for sampling regions close to the current chunk will find they have many more origins to generate than those far away. It doesn't help that our current thread Id scheme groups sampling regions by physical proximity as this causes some worker groups to only contain sampling regions closer to the current chunk than other worker groups. Eventually, we'll find that most threads will complete quickly and be waiting for a few threads given dense sampling regions.
@@ -104,7 +108,7 @@ At our maximum LoD it's meaningless to subdivide each regions task any further s
 
 ![](Threads.png)
 
-It's unfortunate that some chunks will still have more threads than others, but to make this not the case would require LoD levels to be exponentially larger(i.e. all powers of 2), and anyways the difference in thread count cannot be greater than one. Having remapped multiple threads to identical chunks presents a new problem: subdividing sampling within a chunk.
+It's unfortunate that some regions will still have more threads than others, but to make this not the case would require LoD levels to be exponentially larger(i.e. all powers of 2), and anyways the difference in thread count cannot be greater than one. Having remapped multiple threads to identical regions presents a new problem: subdividing sampling within a region.
 
 Firstly, to divide up a sample region we need to know how many threads are responsible for completing it. The number of threads mapped to the current thread's sample-region can be determined using the formula below:
 ```
@@ -129,7 +133,7 @@ for(uint i = 0; i < numPoints; i++){
 }
 ```
 
-The overlap offset will provide each thread accessing a region a unique number seperating it from all other threads accessing the region. By factoring it into the seed, we can guarantee that the starting seed is(usually) unique from its siblings accessing the region. The LoD is also used to determine the seed, but to prevent mapping collisions(If LoD is 0 and overlapOffset is 1, it will the same as LoD is 1 and overlapOffset is 0), it is first randomized. Finally the chunk coord needs to also be considered so it is first randomized for the same reason and then factored in.
+The overlap offset will provide each thread accessing a region a unique number seperating it from all other threads accessing the region. By factoring it into the seed, we can guarantee that the starting seed is(usually) unique from its siblings accessing the region. The LoD is also used to determine the seed, but to prevent mapping collisions(If LoD is 0 and overlapOffset is 1, it will be the same as LoD is 1 and overlapOffset is 0), it is first randomized. Finally the chunk coord needs to also be considered so it is first randomized for the same reason and then factored in.
 
 For the proceeding seeds for each thread to be unique, the seed can be incremented by the chunkOverlap. This allows each thread to take responsibility for every ith origin such that no seed can be mapped to by two threads with unique overlap offsets.
 
