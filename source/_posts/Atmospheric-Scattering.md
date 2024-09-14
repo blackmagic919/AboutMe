@@ -112,7 +112,8 @@ Finally, we have to figure out what to do with the original color of the pixel: 
 
 The astute may have noticed an oversight with this method, the original color of the pixel, the light reflected by the surface, was calculated independent of the atmosphere meaning the light ray managed to reach the surface unimpeded. Technically, if the surface was in the atmosphere this color would be inaccurate, as it fails to account for the portion of light lost from the edge of the atmosphere to the surface. This is a valid point, but in most applications the visual effect is minimal so apart from simulations demanding extreme accuracy, this factor is ignored. 
 ```
-Ip' = Ip + Ke(λ) x exp(-∫(PaPb));
+Ip' = Iv + Ip * Ke(λ) x exp(-∫(PaPb));
+//Iv = Light from atmosphere, see previous function.
 //Ip = Original color of pixel, light reflected from surface
 //Ke = Coefficient of extinction(scattering coeff)
 //∫(PaPb) = Density integral from Pa to Pb
