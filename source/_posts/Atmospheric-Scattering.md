@@ -122,7 +122,7 @@ Ip' = Iv + Ip * Ke(λ) x exp(-∫(PaPb));
 So at long last, we arrive at a beautiful visual atmosphere.
 ![](Atmosphere.png)
 
-## Intergration
+## Integration
 
 Thusfar, we've calculated atmospheric light scattering based off an atmosphere represented as a density function. This is a common approach for similar atmospheres in practically all games, but it's precisely what makes the atmosphere [*arbitrary*](#Specifications) in most games. The density sampled by the atmosphere is defined by a constant function meaning it is static and cannot change no matter where you are in the world or what's around you. It remains this way because many games cannot contain abstractions capable of parameterizing the atmosphere in a spatial, realistic way like what would be necessary to make it interactable.
 

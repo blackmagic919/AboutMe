@@ -30,7 +30,7 @@ Thus, for long-term storage of GPU generated data, the implementation of a custo
 {% blockquote %}
 Example Use-Case
 
-Polygons generated through marching cubes by shaders are hard to predict from the CPU. Reallocating a buffer from the CPU would stall the CPU while the GPU catches up on commands. This system intends to solve this by creating comands able to be buffered as a GPU instruction maintain parallelization between the two processors. 
+Polygons generated through marching cubes by shaders are hard to predict from the CPU. Reallocating a buffer from the CPU would stall the CPU while the GPU catches up on commands. This system intends to solve this by creating comands able to be buffered as a GPU instruction maintaining parallelization between the two processors. 
 
 {% endblockquote %}
 
