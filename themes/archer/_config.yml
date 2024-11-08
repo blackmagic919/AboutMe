@@ -73,9 +73,9 @@ main_title: Arterra
 # subtitle
 subtitle: Algorithms, Ideas, and Thoughts
 # site haeder image
-site_header_image: '/intro/Background_1.png'
+site_header_image: '/intro/Background_0.png'
 # post haeder image
-post_header_image: '/intro/Background_2.png'
+post_header_image: '/intro/Background_1.png'
 # 404 image
 _404_image: '/intro/404-bg.jpg'
 
