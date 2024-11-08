@@ -69,9 +69,9 @@ SEO_keywords:
   - 'hexo-theme'
   - 'hexo-blog'
 # main title shown in header image
-main_title: Project Space
+main_title: Arterra
 # subtitle
-subtitle: Recent Projects and Interesting Ideas
+subtitle: Algorithms, Ideas, and Thoughts
 # site haeder image
 site_header_image: '/intro/Background_1.png'
 # post haeder image
