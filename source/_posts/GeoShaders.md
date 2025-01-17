@@ -1,7 +1,7 @@
 ---
 title: GeoShaders
 date: 2024-11-03 22:45:20
-tags:
+tags: GeoShader
 ---
 ## Overview
 
@@ -81,13 +81,13 @@ While we could implement this straight away, there is an ethical concern we're i
 
 In reality, Marching Cubes generates overlapping vertices, which when accounted for reduces vertex count by a factor of 4 **exactly**(ignoring edges). However, this doesn't reduce the amount of triangles which are individually processed by GeoShaders meaning even if a GeoShader produced one triangle for every base triangle, it would innevitably create 4 times the vertices. One could attempt to reclaim these duplicate vertices, but as GeoShaders may vary this would be an arduous case by case undertaking.
 
-This isn't a concern for traditional GeoShaders, as GeoShaded geometry is not retained by discarded per draw call, the maximum amount is correspondingly limited by the maximum batch draw call size. Rather traditional GeoShader's often limit the distance GeoShaders are applied primarily due to the rendering load. By the same reasoning, one could reduce our custom GeoShader's memory load by limiting the distance at which they are applied. But even at the extreme, this could only be limited to the smallest LoD range at which chunks will regenerate, or the concept of retaining GeoShaded geometry breaks down.
+This isn't a concern for traditional GeoShaders, as GeoShaded geometry is not retained but discarded per draw call, the maximum amount is correspondingly limited by the maximum batch draw call size. Rather traditional GeoShader's often limit the distance GeoShaders are applied primarily due to the rendering load. By the same reasoning, one could reduce our custom GeoShader's memory load by limiting the distance at which they are applied. But even at the extreme, this could only be limited to the smallest LoD range at which chunks will regenerate, or the concept of retaining GeoShaded geometry breaks down.
 
 Ultimately, utilizing 4-8x the of space our base geometry to store purely gratuitous visual effects not central to the simulation is questionable, so a form of unit compression is desirable.
 
 ### Solution 
 
-Let's start by saying defining the basic information each GeoShaded geometry might include. To be integrated within most stanard renderpipelines it must specify its 3D position: usually 3 numbers describing its unique cartesian position in the world. Additionally, to determine lighting information for the primitive we must also specify the **normal** of our vertex--usually a 3D unit cartesian vector. Technically, as each plane has a 'true normal' specified as the cross product of two edges one could get away with not specifying it, but effects like smooth geometry would no longer be possible. Finally, we'll add an extra number for GeoShader internal information, such as UVs if texture mapping is required. Sticking to 4-byte precision, that's a total of ```(3 + 3 + 1) * 4 = 28 bytes``` per vertex.
+Let's start by defining the basic information each GeoShaded geometry might include. To be integrated within most standard renderpipelines it must specify its 3D position: usually 3 numbers describing its unique cartesian position in the world. Additionally, to determine lighting information for the primitive we must also specify the **normal** of our vertex--usually a 3D unit cartesian vector. Technically, as each plane has a 'true normal' specified as the cross product of two edges one could get away with not specifying it, but effects like smooth geometry would no longer be possible. Finally, we'll add an extra number for GeoShader internal information, such as UVs if texture mapping is required. Sticking to 4-byte precision, that's a total of ```(3 + 3 + 1) * 4 = 28 bytes``` per vertex.
 
 Now, depending one one's purpose for GeoShaders, it's possible to design a compact representation where GeoShaded geometry is heavily reliant on its base information. For example, one could specify that GeoShaded geometry **inherits** its base triangle's normals, completely eliminating 12 bytes, while its position is restricted to a limited offset from the base triangles center, feasibly reducing the 12 byte coordinate to 3 bytes. An extra 4 bytes would be needed to reference the index the triangle is based off of amounting to a potential total as low as 8 bytes. However, due to the amount of extra handles and pre-processing Surface Shaders need to account for to decode this information, it accumulates to a notably slower performance, not to mention severly limiting GeoShader potential.
 
@@ -99,7 +99,7 @@ float3 cartesian; //unpacked normal
 float2 spherical; //normal spherical coord
 spherical.y = asin(cartesian.z) / π + 0.5f;
 spherical.x = (atan2(cartesian.y, cartesian.x) + π) / (2π);
-uint packed = (((uint)spherical.x * 0xFF) << 8) | ((uint)spherical.y * 0xFF); //packed normal
+uint packed = (((uint)spherical.x * 0xFF) << 6) | ((uint)spherical.y * 0x3F); //packed normal
 ```
 Of course many other normal packing strategies exist that may be just as efficient, but this one is sufficiently compact for our purposes. With it we can reduce our original 96 bits to just 14.
 
